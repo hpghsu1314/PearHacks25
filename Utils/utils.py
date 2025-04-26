@@ -7,13 +7,11 @@ from Utils.dish import Dish
 
 import cv2
 import numpy as np
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, ImageFile
 import pytesseract
 import io
 import warnings
 
-# Add at the top of your script
-warnings.filterwarnings("ignore", category=Image.DecompressionBombWarning)
 
 api_key="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"
 pytesseract.pytesseract.tesseract_cmd = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
@@ -27,13 +25,6 @@ class FakeUploadedFile(io.BytesIO):
         
     def getvalue(self):
         return super().getvalue()
-
-from PIL import Image, ImageFile
-import pymupdf
-import io
-import cv2
-import numpy as np
-import pytesseract
 
 # Allow larger image sizes (adjust according to your needs)
 Image.MAX_IMAGE_PIXELS = 1_000_000_000  # 1 billion pixels
