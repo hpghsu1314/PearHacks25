@@ -129,6 +129,10 @@ def create_restaurant(menu_json_object, name="Default Restaurant"):
     return new_restaurant
 
 
+# Helper function for fast dish Creation without breaking abstraction
+def create_new_dish(dish_name, ingredients, price):
+    return Dish(dish_name, ingredients, price)
+
 
 # Example usage
 text = """

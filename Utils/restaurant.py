@@ -25,6 +25,7 @@ class Restaurant:
 
 
     def add_dish(self, new_dish):
+        assert isinstance(new_dish, Dish)
         self.menu.append(new_dish)
 
 
