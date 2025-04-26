@@ -3,7 +3,7 @@ class User:
     """
     This has information about the User. This will include dietary restrictions and other information.
         - username (String): Username defined by consumer
-        - restrictions (Dictionary): A list of strings defining the dietary restrictions of our user
+        - restrictions (Dictionary): A dictionary of strings -> integers. Integers define the danger scale of the ingredient.
     """
     def __init__(self, username, restrictions):
         assert isinstance(restrictions, dict)
@@ -34,5 +34,7 @@ class User:
 
     def add_restriction(self, ingredient, scale):
         assert isinstance(ingredient, str)
+        assert isinstance(scale, int)
+        
         self.restrictions[ingredient.lower()] = scale
         return self.restrictions[ingredient]
