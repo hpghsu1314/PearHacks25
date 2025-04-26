@@ -365,12 +365,3 @@ text = """
 - tiramisu; 7; espresso-soaked lady fingers, mascarpone, cocoa dusting
 """
 
-uploaded_image = st.file_uploader("Upload a menu image", type=["jpg", "jpeg", "png"])
-
-if uploaded_image:
-    uploaded_pdf = process_uploaded_image(uploaded_image)
-
-    new_restaurant = from_pdf_to_restaurant(uploaded_pdf)
-    print(new_restaurant.get_menu())
-    for item in new_restaurant.get_menu():
-        print(item.list_information())
