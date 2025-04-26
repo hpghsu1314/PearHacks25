@@ -35,6 +35,12 @@ class User:
     def add_restriction(self, ingredient, scale):
         assert isinstance(ingredient, str)
         assert isinstance(scale, int)
-        
+
         self.restrictions[ingredient.lower()] = scale
         return self.restrictions[ingredient]
+    
+    
+    def remove_restriction(self, ingredient):
+        assert ingredient in self.restrictions.keys()
+        self.restrictions.pop(ingredient)
+        return self.restrictions
