@@ -129,6 +129,14 @@ def create_restaurant(menu_json_object, name="Default Restaurant"):
     return new_restaurant
 
 
+# Create new restaurant given pdf file and restaurant name
+def from_pdf_to_restaurant(pdf_file, restaurant_name="Default Restaurant"):
+    pdf_string = pdf_to_text(pdf_file)
+    json_like_text_object = parse_text_of_menu(pdf_string)
+    json_like_object = parse_menu_from_json(json_like_text_object)
+    return create_restaurant(json_like_object, restaurant_name)
+
+
 # Helper function for fast dish Creation without breaking abstraction
 def create_new_dish(dish_name, ingredients, price):
     return Dish(dish_name, ingredients, price)
