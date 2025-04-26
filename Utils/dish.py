@@ -11,18 +11,23 @@ class Dish:
         self.ingredients = self.change_ingredients(ingredients)
         self.price = price
 
-    def get_price(self):
+
+    def get_price(self, pseudo_arg=None):
         return self.price
     
+
     def get_ingredients(self):
         return self.ingredients
     
+
     def get_dish(self):
         return self.name
     
+
     def add_ingredient(self, ingredient):
         self.ingredients.append(ingredient.lower())
         return self.ingredients
+
 
     def change_ingredients(self, new_ingredients):
         self.ingredients = []
@@ -30,9 +35,11 @@ class Dish:
             self.ingredients.append(ingredient.lower())
         return self.ingredients
     
+
     def remove_ingredient(self, ingredient):
         self.ingredients.remove(ingredient.lower())
         return self.ingredients
+    
     
     def list_information(self):
         return f"{self.name} costs {self.price} and has ingredients {self.ingredients}"

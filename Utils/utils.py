@@ -5,13 +5,29 @@ import anthropic
 from Utils.restaurant import Restaurant
 from Utils.dish import Dish
 
+import cv2
+import numpy as np
+from PIL import Image
+import pytesseract
+import io
+
 
 api_key="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"
 
 
+class FakeUploadedFile(io.BytesIO):
+    def __init__(self, file_bytes, name):
+        super().__init__(file_bytes.getvalue())
+        self.name = name
+        self.type = "application/pdf"
+        
+    def getvalue(self):
+        return super().getvalue()
+
+
 # Receives a pdf file received from streamlit and returns a string of text
 def pdf_to_text(file):
-    assert isinstance(file, UploadedFile), "You did not upload a valid PDF file"
+    assert isinstance(file, UploadedFile) or isinstance(file, FakeUploadedFile), "You did not upload a valid PDF file"
     
     file.seek(0)
     pdf = pymupdf.open(stream=file.read(), filetype="pdf")
@@ -120,12 +136,12 @@ def parse_menu_from_json(text):
 
 
 # Given a json-like object and a name of the restaurant, returns a new Restaurant object including all of the dishes
-def create_restaurant(menu_json_object, name="Default Restaurant"):
+def create_restaurant(menu_json_object, menu_pdf, name="Default Restaurant"):
     new_menu = []
     for dish in menu_json_object:
         new_dish = Dish(dish["dish"], dish["ingredients"], dish["price"])
         new_menu.append(new_dish)
-    new_restaurant = Restaurant(new_menu, name)
+    new_restaurant = Restaurant(new_menu, menu_pdf, name)
     return new_restaurant
 
 
@@ -134,12 +150,110 @@ def from_pdf_to_restaurant(pdf_file, restaurant_name="Default Restaurant"):
     pdf_string = pdf_to_text(pdf_file)
     json_like_text_object = parse_text_of_menu(pdf_string)
     json_like_object = parse_menu_from_json(json_like_text_object)
-    return create_restaurant(json_like_object, restaurant_name)
+    return create_restaurant(json_like_object, pdf_file, restaurant_name)
 
 
 # Helper function for fast dish Creation without breaking abstraction
 def create_new_dish(dish_name, ingredients, price):
     return Dish(dish_name, ingredients, price)
+
+
+def deskew_image(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    edged = cv2.Canny(blur, 50, 150)
+
+    contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if not contours:
+        return img
+
+    largest_contour = max(contours, key=cv2.contourArea)
+    rect = cv2.minAreaRect(largest_contour)
+
+    angle = rect[-1]
+    if angle < -45:
+        angle = 90 + angle
+
+    (h, w) = img.shape[:2]
+    center = (w // 2, h // 2)
+
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+
+    return rotated
+
+
+def correct_text_orientation(img):
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    try:
+        osd = pytesseract.image_to_osd(img_rgb)
+    except pytesseract.TesseractError:
+        return img  # fallback if OCR fails
+
+    rotation = 0
+    for line in osd.split('\n'):
+        if 'Rotate:' in line:
+            rotation = int(line.split(':')[-1].strip())
+            break
+
+    if rotation == 0:
+        return img
+
+    (h, w) = img.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, -rotation, 1.0)  # negative to correct
+    rotated = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+
+    return rotated
+
+
+def crop_menu(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    edged = cv2.Canny(blur, 50, 150)
+
+    contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if not contours:
+        return img
+
+    largest_contour = max(contours, key=cv2.contourArea)
+    x, y, w, h = cv2.boundingRect(largest_contour)
+
+    cropped = img[y:y+h, x:x+w]
+    return cropped
+
+
+def image_to_pdf_bytes(img):
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    pil_img = Image.fromarray(img_rgb)
+
+    pdf_bytes = io.BytesIO()
+    pil_img.save(pdf_bytes, format="PDF")
+    pdf_bytes.seek(0)
+    return pdf_bytes
+
+
+def process_uploaded_image(image_file):
+    """
+    Full flow:
+    Given an image file (jpg, jpeg, png),
+    returns a FakeUploadedFile representing the correctly oriented, cropped menu as a PDF.
+    """
+    image_bytes = image_file.read()
+
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    deskewed = deskew_image(img)
+    correctly_oriented = correct_text_orientation(deskewed)
+    cropped_menu = crop_menu(correctly_oriented)
+    pdf_bytes = image_to_pdf_bytes(cropped_menu)
+    uploaded_pdf = FakeUploadedFile(pdf_bytes, name="menu.pdf")
+
+    return uploaded_pdf
 
 
 # Example usage
@@ -157,3 +271,15 @@ text = """
 - Chocolate Lava Cake; 8.5; molten chocolate center, vanilla icecream
 - tiramisu; 7; espresso-soaked lady fingers, mascarpone, cocoa dusting
 """
+
+uploaded_image = st.file_uploader("Upload a menu image", type=["jpg", "jpeg", "png"])
+
+if uploaded_image:
+    uploaded_pdf = process_uploaded_image(uploaded_image)
+
+    st.download_button(
+        label="Download Corrected Menu PDF",
+        data=uploaded_pdf.getvalue(),
+        file_name=uploaded_pdf.name,
+        mime=uploaded_pdf.type
+    )
