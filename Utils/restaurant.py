@@ -36,7 +36,6 @@ class Restaurant:
             if dish.get_dish() == dish_name:
                 return self.actions[action](dish, argument)
                 
-            
     
     def get_menu_pdf(self):
         return self.menu_pdf
