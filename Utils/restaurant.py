@@ -6,8 +6,9 @@ class Restaurant:
         - name (String): Restaurant name (need not be unique)
         - menu (List): A list of Dish objects. See dish.py for information on Dish objects.
     """
-    def __init__(self, menu, name):
+    def __init__(self, menu, menu_pdf, name):
         self.name = name
+        self.menu_pdf = menu_pdf
         self.menu = menu
         self.actions = {"Add Ingredient" : Dish.add_ingredient, "Change Ingredients": Dish.change_ingredients, "Remove Ingredient": Dish.remove_ingredient}
 
@@ -35,6 +36,10 @@ class Restaurant:
             if dish.get_dish() == dish_name:
                 self.actions[action](dish, argument)
                 return
+            
+    
+    def get_menu_pdf(self):
+        return self.menu_pdf
             
 
     # This is a helper function for debugging
