@@ -33,3 +33,6 @@ class Dish:
     def remove_ingredient(self, ingredient):
         self.ingredients.remove(ingredient.lower())
         return self.ingredients
+    
+    def list_information(self):
+        return f"{self.name} costs {self.price} and has ingredients {self.ingredients}"
