@@ -7,12 +7,16 @@ from Utils.dish import Dish
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ExifTags
 import pytesseract
 import io
+import warnings
 
+# Add at the top of your script
+warnings.filterwarnings("ignore", category=Image.DecompressionBombWarning)
 
 api_key="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"
+pytesseract.pytesseract.tesseract_cmd = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
 
 
 class FakeUploadedFile(io.BytesIO):
@@ -24,16 +28,97 @@ class FakeUploadedFile(io.BytesIO):
     def getvalue(self):
         return super().getvalue()
 
+from PIL import Image, ImageFile
+import pymupdf
+import io
+import cv2
+import numpy as np
+import pytesseract
 
-# Receives a pdf file received from streamlit and returns a string of text
-def pdf_to_text(file):
-    assert isinstance(file, UploadedFile) or isinstance(file, FakeUploadedFile), "You did not upload a valid PDF file"
+# Allow larger image sizes (adjust according to your needs)
+Image.MAX_IMAGE_PIXELS = 1_000_000_000  # 1 billion pixels
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+def safe_get_pixmap(page, max_pixels=256_000_000):
+    """Smart rendering of PDF pages with size checks"""
+    # Calculate dimensions in inches (PDF uses points: 1 inch = 72 points)
+    width_in = page.rect.width / 72
+    height_in = page.rect.height / 72
     
+    # Calculate maximum DPI that keeps total pixels under limit
+    max_dim = (max_pixels / (width_in * height_in)) ** 0.5
+    dpi = min(300, max_dim)  # Never exceed 300 DPI
+    
+    # For very large pages, use a minimum DPI of 72
+    dpi = max(72, dpi)
+    
+    return page.get_pixmap(matrix=pymupdf.Matrix(dpi/72, dpi/72))
+
+def preprocess_image(image):
+    """Modified preprocessing with size checks"""
+    img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    
+    # Original dimensions
+    h, w = img.shape[:2]
+    
+    # Calculate scaling factor safely
+    max_dimension = 4000  # Keep under common screen resolutions
+    scale = min(1.0, max_dimension / max(h, w))
+    
+    if scale < 1.0:
+        img = cv2.resize(img, None, fx=scale, fy=scale, 
+                        interpolation=cv2.INTER_AREA)
+    
+    # Rest of processing remains the same
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    denoised = cv2.fastNlMeansDenoising(gray, None, h=10, 
+                                      templateWindowSize=7, 
+                                      searchWindowSize=21)
+    thresh = cv2.adaptiveThreshold(denoised, 255, 
+                                  cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                  cv2.THRESH_BINARY, 11, 2)
+    kernel = np.array([[0, -1, 0], [-1, 5,-1], [0, -1, 0]])
+    sharpened = cv2.filter2D(thresh, -1, kernel)
+    
+    return sharpened
+
+def pdf_to_text(file):
     file.seek(0)
     pdf = pymupdf.open(stream=file.read(), filetype="pdf")
     text = ""
-    for page in pdf:
-        text += page.get_text()
+
+    for page_num, page in enumerate(pdf):
+        try:
+            # First try text extraction
+            page_text = page.get_text()
+            if len(page_text.strip()) > 20:
+                text += page_text
+                continue
+
+            # OCR fallback with safe rendering
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")  # Ignore decompression bomb warnings
+                
+                pix = safe_get_pixmap(page)
+                img = Image.open(io.BytesIO(pix.tobytes()))
+                
+                # Temporary increase of decompression bomb limit
+                original_pixel_limit = Image.MAX_IMAGE_PIXELS
+                try:
+                    Image.MAX_IMAGE_PIXELS = 1_000_000_000
+                    processed = preprocess_image(img)
+                finally:
+                    Image.MAX_IMAGE_PIXELS = original_pixel_limit
+                
+                # OCR processing
+                custom_config = r'--oem 3 --psm 6 -l eng+equ'
+                page_text = pytesseract.image_to_string(processed, config=custom_config)
+                text += page_text + "\n"
+
+        except Exception as e:
+            print(f"Error processing page {page_num}: {str(e)}")
+            continue
+
     return text
 
 
@@ -158,78 +243,100 @@ def create_new_dish(dish_name, ingredients, price):
     return Dish(dish_name, ingredients, price)
 
 
+def apply_exif_rotation(image):
+    """Correct orientation based on EXIF data."""
+    try:
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
+        exif = image._getexif()
+        if exif is not None:
+            exif = dict(exif.items())
+            if orientation in exif:
+                if exif[orientation] == 3:
+                    image = image.rotate(180, expand=True)
+                elif exif[orientation] == 6:
+                    image = image.rotate(270, expand=True)
+                elif exif[orientation] == 8:
+                    image = image.rotate(90, expand=True)
+    except (AttributeError, KeyError, IndexError, TypeError):
+        pass  # No EXIF data or issues reading it
+    return image
+
+
 def deskew_image(img):
+    """Fix small angular skew (not 90/180/270 rotations)."""
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     edged = cv2.Canny(blur, 50, 150)
 
-    contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Find contours focusing on text regions (ignore borders)
+    contours, _ = cv2.findContours(edged, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]  # Top 5 contours
 
     if not contours:
         return img
 
     largest_contour = max(contours, key=cv2.contourArea)
     rect = cv2.minAreaRect(largest_contour)
-
     angle = rect[-1]
+
+    # Adjust angle for OpenCV's coordinate system
     if angle < -45:
         angle = 90 + angle
+    if abs(angle) > 45:  # Likely orientation issue, not deskew
+        return img
 
+    # Rotate the image to deskew
     (h, w) = img.shape[:2]
     center = (w // 2, h // 2)
-
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-
-    return rotated
+    
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+    new_w = int((h * sin) + (w * cos))
+    new_h = int((h * cos) + (w * sin))
+    
+    M[0, 2] += (new_w / 2) - center[0]
+    M[1, 2] += (new_h / 2) - center[1]
+    
+    return cv2.warpAffine(img, M, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
 
 def correct_text_orientation(img):
+    """Fix 90/180/270 rotations using Tesseract."""
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
+    
     try:
         osd = pytesseract.image_to_osd(img_rgb)
-    except pytesseract.TesseractError:
-        return img  # fallback if OCR fails
+        rotation = int(osd.split('Rotate: ')[1].split('\n')[0])
+    except:
+        return img  # Fallback if Tesseract fails
 
-    rotation = 0
-    for line in osd.split('\n'):
-        if 'Rotate:' in line:
-            rotation = int(line.split(':')[-1].strip())
-            break
-
-    if rotation == 0:
+    # Rotate image according to Tesseract's recommendation
+    if rotation not in [0, 90, 180, 270]:
         return img
 
+    # Convert Tesseract's clockwise rotation to OpenCV's CCW
+    rotation_angle = -rotation  # Negative for OpenCV's rotation direction
     (h, w) = img.shape[:2]
     center = (w // 2, h // 2)
-    M = cv2.getRotationMatrix2D(center, -rotation, 1.0)  # negative to correct
-    rotated = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-
-    return rotated
-
-
-def crop_menu(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    edged = cv2.Canny(blur, 50, 150)
-
-    contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    if not contours:
-        return img
-
-    largest_contour = max(contours, key=cv2.contourArea)
-    x, y, w, h = cv2.boundingRect(largest_contour)
-
-    cropped = img[y:y+h, x:x+w]
-    return cropped
+    
+    M = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+    new_w = int((h * sin) + (w * cos))
+    new_h = int((h * cos) + (w * sin))
+    
+    M[0, 2] += (new_w / 2) - center[0]
+    M[1, 2] += (new_h / 2) - center[1]
+    
+    return cv2.warpAffine(img, M, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
 
 def image_to_pdf_bytes(img):
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     pil_img = Image.fromarray(img_rgb)
-
     pdf_bytes = io.BytesIO()
     pil_img.save(pdf_bytes, format="PDF")
     pdf_bytes.seek(0)
@@ -237,23 +344,18 @@ def image_to_pdf_bytes(img):
 
 
 def process_uploaded_image(image_file):
-    """
-    Full flow:
-    Given an image file (jpg, jpeg, png),
-    returns a FakeUploadedFile representing the correctly oriented, cropped menu as a PDF.
-    """
+    # Read image with EXIF correction
     image_bytes = image_file.read()
+    pil_image = Image.open(io.BytesIO(image_bytes))
+    pil_image = apply_exif_rotation(pil_image)
+    img = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
-    nparr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-    deskewed = deskew_image(img)
-    correctly_oriented = correct_text_orientation(deskewed)
-    cropped_menu = crop_menu(correctly_oriented)
-    pdf_bytes = image_to_pdf_bytes(cropped_menu)
-    uploaded_pdf = FakeUploadedFile(pdf_bytes, name="menu.pdf")
-
-    return uploaded_pdf
+    # Processing order: Correct orientation first, then deskew
+    oriented = correct_text_orientation(img)
+    deskewed = deskew_image(oriented)
+    
+    pdf_bytes = image_to_pdf_bytes(deskewed)
+    return FakeUploadedFile(pdf_bytes, name="menu.pdf")
 
 
 # Example usage
@@ -271,15 +373,3 @@ text = """
 - Chocolate Lava Cake; 8.5; molten chocolate center, vanilla icecream
 - tiramisu; 7; espresso-soaked lady fingers, mascarpone, cocoa dusting
 """
-
-uploaded_image = st.file_uploader("Upload a menu image", type=["jpg", "jpeg", "png"])
-
-if uploaded_image:
-    uploaded_pdf = process_uploaded_image(uploaded_image)
-
-    st.download_button(
-        label="Download Corrected Menu PDF",
-        data=uploaded_pdf.getvalue(),
-        file_name=uploaded_pdf.name,
-        mime=uploaded_pdf.type
-    )

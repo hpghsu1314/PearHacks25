@@ -38,7 +38,6 @@ class Restaurant:
                 print(self.actions.keys())
                 return self.actions[action](dish, argument)
                 
-            
     
     def get_menu_pdf(self):
         return self.menu_pdf
