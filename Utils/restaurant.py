@@ -1,4 +1,4 @@
-from dish import Dish
+from Utils.dish import Dish
 
 class Restaurant:
     """

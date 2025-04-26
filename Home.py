@@ -1,9 +1,20 @@
 # Home page. Explains what the app does, slick logo, where to go, etc.
 
 import streamlit as st
+from Utils import user  # Import user.py from the Utils folder
 
 # Set page configuration
 st.set_page_config(page_title="Allergy App", page_icon=":sparkles:")
+
+if "restaurants" not in st.session_state:
+    st.session_state.restaurants = []
+
+    # Initialize session state if it doesn't exist
+if "restrictions_to_add" not in st.session_state:
+    st.session_state.restrictions_to_add = []
+
+if "user" not in st.session_state:
+    st.session_state.user = user.User("Test User", {})  # <-- Now creating User object
 
 
 # Display logo and app name

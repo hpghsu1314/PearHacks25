@@ -2,8 +2,8 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 import pymupdf
 import anthropic
-from restaurant import Restaurant
-from dish import Dish
+from Utils.restaurant import Restaurant
+from Utils.dish import Dish
 
 
 api_key="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"

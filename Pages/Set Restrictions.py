@@ -5,7 +5,10 @@ from Utils import user  # Import user.py from the Utils folder
 # Set page config
 st.set_page_config(page_title="Ingredient Restrictions", layout="centered")
 
-# Initialize session state if it doesn't exist
+if "restaurants" not in st.session_state:
+    st.session_state.restaurants = []
+
+    # Initialize session state if it doesn't exist
 if "restrictions_to_add" not in st.session_state:
     st.session_state.restrictions_to_add = []
 
@@ -17,15 +20,18 @@ st.title("Add Ingredient Restrictions")
 def edit_ing_maker(ingredient_name, value):
     return lambda: st.session_state.user.change_restriction(ingredient_name, value)
 
+def delete_ing_maker(ingredient_name):
+    return lambda: st.session_state.user.remove_restriction(ingredient_name)
+
 # Function to show the ingredient in a container with a border and two columns
 def show_ingredient(ingredient_name, severity):
     with st.container(border=True):
         # Create two main columns inside the container
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns([1, 3, 1])
 
         # First column: display the ingredient name
         with col1:
-            st.write(ingredient_name)
+            st.badge(ingredient_name.capitalize(), color="grey")
 
         # Second column: add three buttons horizontally across the column
         with col2:
@@ -39,6 +45,11 @@ def show_ingredient(ingredient_name, severity):
             with subcol3:
                 st.button("Severe", key=f"{ingredient_name}_btn_3", use_container_width=True, type="primary" if severity == 3 else "secondary",
                           on_click=edit_ing_maker(ingredient_name, 3))
+        
+        with col3:
+            _, _, c3 = st.columns([1, 1, 2])
+            with c3:
+                st.button("🗑️", on_click=delete_ing_maker(ingredient_name))
 
 # Tags input with updated label and suggestions
 tags = st_tags(
