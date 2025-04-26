@@ -18,7 +18,7 @@ if "user" not in st.session_state:
 if "cached_restaurant_recs" not in st.session_state:
     st.session_state.cached_restaurant_recs = {}
 
-st.title("Add Ingredient Restrictions")
+st.title("Set your Ingredient Restrictions")
 
 def edit_ing(ingredient_name, value):
     st.session_state.cached_restaurant_recs = {}

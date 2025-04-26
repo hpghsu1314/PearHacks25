@@ -2,7 +2,7 @@ import streamlit as st
 from Utils import user, utils  # Import user.py from the Utils folder
 
 # Set page config
-st.set_page_config(page_title="Menu Upload", layout="centered")
+st.set_page_config(page_title="Add Restaurant", layout="centered")
 
 if "restaurants" not in st.session_state:
     st.session_state.restaurants = []
@@ -15,13 +15,21 @@ if "user" not in st.session_state:
     st.session_state.user = user.User("Test User", {})  # <-- Now creating User object
 
 
-st.title("Upload New Menu")
+st.title("Add a New Restaurant")
 
 # Set restaurant's name
 active_restaurant_name = st.text_input("Restaurant Name")
 
+upload_c = st.container(border=True)
+upload_c.markdown("**Upload a PDF or image of your menu.**")
+
 # Upload restaurant's menu
-menu_pdf = st.file_uploader("Upload Menu PDF", type="pdf")
+menu_pdf = upload_c.file_uploader("Upload Menu PDF", type="pdf")
+
+# Upload a picture instead
+picture = upload_c.file_uploader("Upload Menu Picture", type=["png", "jpg", "jpeg"])
+if picture:
+    menu_pdf = utils.process_uploaded_image(picture)
 
 # Confirm button
 ready = active_restaurant_name != "" and menu_pdf is not None
