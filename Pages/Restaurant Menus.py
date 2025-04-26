@@ -23,7 +23,7 @@ if "active_restaurant" not in st.session_state:
 if "cached_restaurant_recs" not in st.session_state:
     st.session_state.cached_restaurant_recs = {}
 
-st.title("Restaurant Menus")
+st.title("Restaurant Menus" if st.session_state.active_restaurant == None else st.session_state.restaurants[st.session_state.active_restaurant].get_restaurant() + " Menu")
 
 def update_active_restaurant(index):
     st.session_state.active_restaurant = index
@@ -69,6 +69,12 @@ else:
 
             c1.badge(f"{dish}", color=opinion[1])
             c2.markdown(f'<p style="color: {opinion[1]};">{opinion[0]}</p>', unsafe_allow_html=True, help=reason)
-            c3.text("$?")
+
+            price = -1
+            for test_dish in st.session_state.restaurants[st.session_state.active_restaurant].get_menu():
+                if test_dish.get_dish() == dish:
+                    price = test_dish.get_price()
+
+            c3.text(f"${'{0:.2f}'.format(price)}")
     
     st.button("Back to List", update_active_restaurant(None))

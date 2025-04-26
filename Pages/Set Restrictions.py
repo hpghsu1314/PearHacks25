@@ -60,7 +60,7 @@ def show_ingredient(ingredient_name, severity):
         with col3:
             _, _, c3 = st.columns([1, 1, 2])
             with c3:
-                st.button("🗑️", on_click=delete_ing_maker(ingredient_name))
+                st.button("🗑️", key=f"{ingredient_name}_trash", on_click=delete_ing_maker(ingredient_name))
 
 # Tags input with updated label and suggestions
 tags = st_tags(
@@ -82,6 +82,8 @@ if st.button("Add Restrictions"):
     
     # Clear the tags input by resetting restrictions_to_add
     st.session_state.restrictions_to_add = []
+
+    st.session_state.cached_restaurant_recs = {}
 
 # Save tags to session state
 st.session_state.restrictions_to_add = tags

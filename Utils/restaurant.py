@@ -34,6 +34,8 @@ class Restaurant:
         for dish in self.menu:
             assert isinstance(dish, Dish)
             if dish.get_dish() == dish_name:
+                print(action)
+                print(self.actions.keys())
                 return self.actions[action](dish, argument)
                 
             

@@ -27,7 +27,15 @@ menu_pdf = st.file_uploader("Upload Menu PDF", type="pdf")
 ready = active_restaurant_name != "" and menu_pdf is not None
 if st.button("Add Restaurant", disabled = not ready) and active_restaurant_name is not None and menu_pdf is not None:
     restaurant_object = utils.from_pdf_to_restaurant(menu_pdf, active_restaurant_name)
-    st.write(restaurant_object.get_restaurant())
-    _ = [st.write(item.list_information()) for item in restaurant_object.get_menu()]
+    st.header(f"Dishes for {restaurant_object.get_restaurant()}")
+
+    for dish in restaurant_object.get_menu():
+        c = st.container(border=True)
+        with c:
+            col0, col1, col2 = st.columns([2, 1, 4])
+            col0.badge(dish.get_dish(), color="gray")
+            # TODO Let people edit ingredients in their dish
+            col1.text(f"${'{0:.2f}'.format(dish.get_price())}")
+            col2.write(", ".join([item.capitalize() for item in dish.get_ingredients()]))
 
     st.session_state.restaurants.append(restaurant_object)
