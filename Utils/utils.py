@@ -2,8 +2,8 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 import pymupdf
 import anthropic
-from restaurant import Restaurant
-from dish import Dish
+from Utils.restaurant import Restaurant
+from Utils.dish import Dish
 
 import cv2
 import numpy as np
