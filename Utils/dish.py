@@ -8,7 +8,7 @@ class Dish:
     """
     def __init__(self, name, ingredients, price):
         self.name = name
-        self.ingredients = ingredients
+        self.ingredients = self.change_ingredients(ingredients)
         self.price = price
 
     def get_price(self):
@@ -19,3 +19,17 @@ class Dish:
     
     def get_dish(self):
         return self.name
+    
+    def add_ingredient(self, ingredient):
+        self.ingredients.append(ingredient.lower())
+        return self.ingredients
+
+    def change_ingredients(self, new_ingredients):
+        self.ingredients = []
+        for ingredient in new_ingredients:
+            self.ingredients.append(ingredient.lower())
+        return self.ingredients
+    
+    def remove_ingredient(self, ingredient):
+        self.ingredients.remove(ingredient.lower())
+        return self.ingredients
