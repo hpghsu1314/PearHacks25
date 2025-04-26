@@ -10,7 +10,7 @@ class Restaurant:
         self.name = name
         self.menu_pdf = menu_pdf
         self.menu = menu
-        self.actions = {"Add Ingredient" : Dish.add_ingredient, "Change Ingredients": Dish.change_ingredients, "Remove Ingredient": Dish.remove_ingredient}
+        self.actions = {"Add Ingredient" : Dish.add_ingredient, "Change Ingredients": Dish.change_ingredients, "Remove Ingredient": Dish.remove_ingredient, "Get Price": Dish.get_price}
 
 
     def get_menu(self):
