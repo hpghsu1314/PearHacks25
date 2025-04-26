@@ -34,8 +34,8 @@ class Restaurant:
         for dish in self.menu:
             assert isinstance(dish, Dish)
             if dish.get_dish() == dish_name:
-                self.actions[action](dish, argument)
-                return
+                return self.actions[action](dish, argument)
+                
             
     
     def get_menu_pdf(self):

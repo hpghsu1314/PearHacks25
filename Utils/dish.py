@@ -12,7 +12,7 @@ class Dish:
         self.price = price
 
 
-    def get_price(self):
+    def get_price(self, pseudo_arg=None):
         return self.price
     
 
