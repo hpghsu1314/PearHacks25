@@ -29,7 +29,7 @@ class User:
         assert ingredient in self.restrictions.keys()
 
         self.restrictions[ingredient.lower()] = scale
-        return self.restrictions[ingredient]
+        return self.restrictions[ingredient.lower()]
     
 
     def add_restriction(self, ingredient, scale):
@@ -37,7 +37,7 @@ class User:
         assert isinstance(scale, int)
 
         self.restrictions[ingredient.lower()] = scale
-        return self.restrictions[ingredient]
+        return self.restrictions[ingredient.lower()]
     
     
     def remove_restriction(self, ingredient):
