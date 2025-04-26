@@ -6,19 +6,19 @@ from Utils import user  # Import user.py from the Utils folder
 st.set_page_config(page_title="Ingredient Restrictions", layout="centered")
 
 # Initialize session state if it doesn't exist
-if "restrictions" not in st.session_state:
-    st.session_state.restrictions = []
-
 if "restrictions_to_add" not in st.session_state:
     st.session_state.restrictions_to_add = []
 
-if "active_user" not in st.session_state:
-    st.session_state.active_user = user.User("Test User", {})  # <-- Now creating User object
+if "user" not in st.session_state:
+    st.session_state.user = user.User("Test User", {})  # <-- Now creating User object
 
 st.title("Add Ingredient Restrictions")
 
+def edit_ing_maker(ingredient_name, value):
+    return lambda: st.session_state.user.change_restriction(ingredient_name, value)
+
 # Function to show the ingredient in a container with a border and two columns
-def show_ingredient(ingredient_name):
+def show_ingredient(ingredient_name, severity):
     with st.container(border=True):
         # Create two main columns inside the container
         col1, col2 = st.columns(2)
@@ -31,11 +31,14 @@ def show_ingredient(ingredient_name):
         with col2:
             subcol1, subcol2, subcol3 = st.columns(3)
             with subcol1:
-                st.button("1", key=f"{ingredient_name}_btn_1", use_container_width=True)
+                st.button("Dislike", key=f"{ingredient_name}_btn_1", use_container_width=True, type="primary" if severity == 1 else "secondary",
+                          on_click=edit_ing_maker(ingredient_name, 1))
             with subcol2:
-                st.button("2", key=f"{ingredient_name}_btn_2", use_container_width=True)
+                st.button("Unsafe", key=f"{ingredient_name}_btn_2", use_container_width=True, type="primary" if severity == 2 else "secondary",
+                          on_click=edit_ing_maker(ingredient_name, 2))
             with subcol3:
-                st.button("3", key=f"{ingredient_name}_btn_3", use_container_width=True)
+                st.button("Severe", key=f"{ingredient_name}_btn_3", use_container_width=True, type="primary" if severity == 3 else "secondary",
+                          on_click=edit_ing_maker(ingredient_name, 3))
 
 # Tags input with updated label and suggestions
 tags = st_tags(
@@ -53,8 +56,7 @@ tags = st_tags(
 if st.button("Add Restrictions"):
     # Add tags from restrictions_to_add to restrictions with duplicate protection
     for tag in st.session_state.restrictions_to_add:
-        if tag not in st.session_state.restrictions:
-            st.session_state.restrictions.append(tag)
+        st.session_state.user.add_restriction(tag, 3)
     
     # Clear the tags input by resetting restrictions_to_add
     st.session_state.restrictions_to_add = []
@@ -64,8 +66,8 @@ st.session_state.restrictions_to_add = tags
 
 # Display current restrictions using the show_ingredient function
 st.subheader("Your Restrictions:")
-if st.session_state.restrictions:
-    for item in st.session_state.restrictions:
-        show_ingredient(item)
+if st.session_state.user.get_dietary_restrictions():
+    for ing_name, severity in st.session_state.user.get_dietary_restrictions().items():
+        show_ingredient(ing_name, severity)
 else:
     st.write("No restrictions added yet.")
