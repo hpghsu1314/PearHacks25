@@ -1,5 +1,6 @@
 import streamlit as st
 from streamlit_tags import st_tags
+from Utils import user  # Import user.py from the Utils folder
 
 # Set page config
 st.set_page_config(page_title="Ingredient Restrictions", layout="centered")
@@ -10,6 +11,9 @@ if "restrictions" not in st.session_state:
 
 if "restrictions_to_add" not in st.session_state:
     st.session_state.restrictions_to_add = []
+
+if "active_user" not in st.session_state:
+    st.session_state.active_user = user.User("Test User", {})  # <-- Now creating User object
 
 st.title("Add Ingredient Restrictions")
 
