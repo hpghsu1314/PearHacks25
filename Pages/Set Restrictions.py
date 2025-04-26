@@ -15,13 +15,24 @@ if "restrictions_to_add" not in st.session_state:
 if "user" not in st.session_state:
     st.session_state.user = user.User("Test User", {})  # <-- Now creating User object
 
+if "cached_restaurant_recs" not in st.session_state:
+    st.session_state.cached_restaurant_recs = {}
+
 st.title("Add Ingredient Restrictions")
 
+def edit_ing(ingredient_name, value):
+    st.session_state.cached_restaurant_recs = {}
+    st.session_state.user.change_restriction(ingredient_name, value)
+
 def edit_ing_maker(ingredient_name, value):
-    return lambda: st.session_state.user.change_restriction(ingredient_name, value)
+    return lambda: edit_ing(ingredient_name, value)
+
+def delete_ing(ingredient_name):
+    st.session_state.cached_restaurant_recs = {}
+    st.session_state.user.remove_restriction(ingredient_name)
 
 def delete_ing_maker(ingredient_name):
-    return lambda: st.session_state.user.remove_restriction(ingredient_name)
+    return lambda: delete_ing(ingredient_name)
 
 # Function to show the ingredient in a container with a border and two columns
 def show_ingredient(ingredient_name, severity):
@@ -54,7 +65,7 @@ def show_ingredient(ingredient_name, severity):
 # Tags input with updated label and suggestions
 tags = st_tags(
     label="Enter ingredients to avoid:",
-    value=st.session_state.restrictions_to_add,
+    value=st.session_state.restrictions_to_add, 
     suggestions=[
         "Peanuts", "Tree nuts", "Dairy", "Eggs", "Gluten", "Soy", "Wheat", 
         "Fish", "Shellfish", "Sesame seeds", "Pork", "Beef", "Chicken", 
