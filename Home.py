@@ -4,7 +4,7 @@ import streamlit as st
 from Utils import user  # Import user.py from the Utils folder
 
 # Set page configuration
-st.set_page_config(page_title="Allergy App", page_icon=":sparkles:")
+st.set_page_config(page_title="Awning", page_icon=":sparkles:")
 
 if "restaurants" not in st.session_state:
     st.session_state.restaurants = []
@@ -18,17 +18,26 @@ if "user" not in st.session_state:
 
 
 # Display logo and app name
+# Open center-align div
 
-# Placeholder for the logo
-st.image("https://via.placeholder.com/80", width=80)  # You can replace this URL with your actual logo
+# Create three columns
+_, col2, _ = st.columns([1, 2, 1])  # Center column is a bit wider
 
-st.markdown(
-"<h1 style='text-align: center;'>Allergy App</h1>",
-    unsafe_allow_html=True
-)
+# Place the image in the center column
+with col2:
+    st.image("awning-logo.png", use_container_width=True)
 
-# Divider
-st.markdown("---")
 
 # Optional: Some welcome text
-st.write("Welcome to the Untitled app! 🚀")
+st.subheader("Got allergies? Never ask for an ingredients list again.")
+st.write("Welcome to Awning, your solution to managing dietary restrictions.")
+st.write("With Awning, you can set your restrictions any any ingredient. Then, enjoy LLM-powered recommendations for dishes at your favorite restaurants.")
+""
+
+st.subheader("Features")
+"""
+⏩ Add and manage your dietary restrictions.  
+⏩ Extract dishes from a a picture or PDF of any menu.  
+⏩ Use the power of AI to see potential allergens.  
+⏩ Get personally-tailored LLM recommendations for safe dishes at all your favorite restaurants.
+"""
