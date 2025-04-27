@@ -89,7 +89,7 @@ def pdf_to_text(file):
             # OCR fallback with safe rendering
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")  # Ignore decompression bomb warnings
-                
+                print("what are we doing here")
                 pix = safe_get_pixmap(page)
                 img = Image.open(io.BytesIO(pix.tobytes()))
                 
@@ -105,7 +105,7 @@ def pdf_to_text(file):
                 custom_config = r'--oem 3 --psm 6 -l eng+equ'
                 page_text = pytesseract.image_to_string(processed, config=custom_config)
                 text += page_text + "\n"
-
+                print("completed")
         except Exception as e:
             print(f"Error processing page {page_num}: {str(e)}")
             continue
@@ -139,7 +139,9 @@ def parse_text_of_menu(text):
     - Be strict: Do not invent dishes or ingredients not present in the text.
     - If an ingredient list is missing, leave it empty after the colon.
     - Do not include any currency symbols anywhere
-
+    - Price or Ingredients can Never be empty. If the price or ingredients are not there, just remove the entry.
+    - Only include the name of the ingredient, this means it should only be nouns.
+    
     Your entire response should only contain the final formatted list, no explanations or extra commentary.
     """
     
@@ -173,6 +175,8 @@ def parse_text_of_menu(text):
                         - Be strict: Do not invent dishes or ingredients not present in the text.
                         - If an ingredient list is missing, leave it empty after the colon.
                         - Do not include any currency symbols anywhere
+                        - Price or Ingredients can Never be empty. If the price or ingredients are not there, just remove the entry.
+                        - Only include the name of the ingredient, this means it should only be nouns.
                         """
                     }
                 ]
@@ -334,6 +338,22 @@ def image_to_pdf_bytes(img):
     return pdf_bytes
 
 
+def resize_to_reasonable(img, max_dimension=1600, quality=85):
+    """Resize image while maintaining aspect ratio"""
+    h, w = img.shape[:2]
+    
+    # Calculate scaling ratio
+    if max(h, w) <= max_dimension:
+        return img
+    
+    ratio = max_dimension / max(h, w)
+    new_w = int(w * ratio)
+    new_h = int(h * ratio)
+    
+    # Use high-quality resizing
+    return cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+
 def process_uploaded_image(image_file):
     # Read image with EXIF correction
     image_bytes = image_file.read()
@@ -345,6 +365,8 @@ def process_uploaded_image(image_file):
     oriented = correct_text_orientation(img)
     deskewed = deskew_image(oriented)
     
+    deskewed = resize_to_reasonable(deskewed)
+
     pdf_bytes = image_to_pdf_bytes(deskewed)
     return FakeUploadedFile(pdf_bytes, name="menu.pdf")
 
