@@ -11,9 +11,12 @@ from PIL import Image, ExifTags, ImageFile
 import pytesseract
 import io
 import warnings
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
+api_key = os.getenv("ANTHROPIC_API_KEY")
 
-api_key="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"
 pytesseract.pytesseract.tesseract_cmd = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
 
 
@@ -89,7 +92,6 @@ def pdf_to_text(file):
             # OCR fallback with safe rendering
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")  # Ignore decompression bomb warnings
-                print("what are we doing here")
                 pix = safe_get_pixmap(page)
                 img = Image.open(io.BytesIO(pix.tobytes()))
                 
@@ -105,7 +107,6 @@ def pdf_to_text(file):
                 custom_config = r'--oem 3 --psm 6 -l eng+equ'
                 page_text = pytesseract.image_to_string(processed, config=custom_config)
                 text += page_text + "\n"
-                print("completed")
         except Exception as e:
             print(f"Error processing page {page_num}: {str(e)}")
             continue
@@ -141,7 +142,7 @@ def parse_text_of_menu(text):
     - Do not include any currency symbols anywhere
     - Price or Ingredients can Never be empty. If the price or ingredients are not there, just remove the entry.
     - Only include the name of the ingredient, this means it should only be nouns.
-    
+
     Your entire response should only contain the final formatted list, no explanations or extra commentary.
     """
     
