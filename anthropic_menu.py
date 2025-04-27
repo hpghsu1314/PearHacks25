@@ -7,9 +7,12 @@ import json
 from Utils.restaurant import Restaurant
 from Utils.dish import Dish
 from Utils.user import User
+from dotenv import load_dotenv
 
-# Your API key
-api_key="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"
+import os
+
+load_dotenv()
+api_key = os.getenv("ANTHROPIC_API_KEY")
 
 def process_api_response(response_text):
     try:
